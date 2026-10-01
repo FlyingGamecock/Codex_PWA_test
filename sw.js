@@ -1,4 +1,4 @@
-const cacheName = "launchpad-pwa-v1";
+const cacheName = "launchpad-pwa-v2";
 const appShell = [
   "./",
   "./index.html",
