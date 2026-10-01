@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Launchpad app icon">
+  <rect width="512" height="512" rx="96" fill="#154734"/>
+  <path d="M104 332c46-18 82-16 108 5 21 17 45 24 72 18 33-7 65-31 96-73 10-14 31-7 31 10v83c0 18-10 35-26 44-83 47-184 36-281-34-20-14-19-45 0-53Z" fill="#f2bb46"/>
+  <path d="M151 135h210c18 0 32 14 32 32v116c0 18-14 32-32 32H151c-18 0-32-14-32-32V167c0-18 14-32 32-32Z" fill="#fff"/>
+  <path d="M172 188h168M172 232h112" stroke="#154734" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="356" cy="356" r="44" fill="#d4573b"/>
+</svg>
