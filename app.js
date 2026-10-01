@@ -21,18 +21,10 @@ let isSyncing = false;
 function loadIdeas() {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
-    return Array.isArray(saved) ? saved : seedIdeas();
+    return Array.isArray(saved) ? saved.map(normalizeIdea) : [];
   } catch {
-    return seedIdeas();
+    return [];
   }
-}
-
-function seedIdeas() {
-  return [
-    { id: crypto.randomUUID(), text: "Offline personal budget notebook", done: false },
-    { id: crypto.randomUUID(), text: "Neighborhood pickup basketball finder", done: true },
-    { id: crypto.randomUUID(), text: "Recipe planner for pantry leftovers", done: false }
-  ];
 }
 
 function saveIdeas() {
@@ -52,10 +44,16 @@ function savePendingDeletes() {
   localStorage.setItem(pendingDeletesKey, JSON.stringify(pendingDeletes));
 }
 
-function getHeaders() {
-  return {
+function getHeaders({ write = false } = {}) {
+  const headers = {
     apikey: supabaseKey,
-    Authorization: `Bearer ${supabaseKey}`,
+    Authorization: `Bearer ${supabaseKey}`
+  };
+
+  if (!write) return headers;
+
+  return {
+    ...headers,
     "Content-Type": "application/json",
     Prefer: "resolution=merge-duplicates,return=representation"
   };
@@ -84,6 +82,7 @@ async function loadCloudIdeas() {
     await flushPendingChanges();
 
     const response = await fetch(`${ideasEndpoint}?select=*&order=updated_at.desc`, {
+      cache: "no-store",
       headers: getHeaders()
     });
 
@@ -121,7 +120,7 @@ async function flushPendingChanges() {
 async function upsertCloudIdea(idea) {
   return fetch(`${ideasEndpoint}?on_conflict=id`, {
     method: "POST",
-    headers: getHeaders(),
+    headers: getHeaders({ write: true }),
     body: JSON.stringify({
       id: idea.id,
       text: idea.text,
@@ -165,7 +164,7 @@ async function deleteCloudIdea(id) {
   try {
     const response = await fetch(`${ideasEndpoint}?id=eq.${encodeURIComponent(id)}`, {
       method: "DELETE",
-      headers: getHeaders()
+      headers: getHeaders({ write: true })
     });
 
     if (!response.ok) throw new Error(`Delete failed: ${response.status}`);
@@ -291,6 +290,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-updateNetworkStatus();
+updateNetworkStatus(navigator.onLine ? "Loading" : "Offline");
 render();
 loadCloudIdeas();
