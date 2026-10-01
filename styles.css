@@ -114,6 +114,7 @@ h2 {
 
 .install-button,
 .input-row button,
+.auth-actions button,
 .text-button {
   min-height: 42px;
   border-radius: 8px;
@@ -121,10 +122,70 @@ h2 {
 }
 
 .install-button,
-.input-row button {
+.input-row button,
+.auth-actions button {
   padding: 0 18px;
   color: #fff;
   background: var(--accent);
+}
+
+.secondary-button {
+  color: var(--accent);
+  background: rgba(21, 71, 52, 0.1);
+}
+
+.auth-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 22px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.auth-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.auth-form label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.auth-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.auth-actions,
+.profile-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-panel {
+  justify-content: space-between;
+}
+
+.profile-panel p,
+.auth-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.auth-message:empty {
+  display: none;
 }
 
 .summary-grid {
@@ -270,9 +331,16 @@ h2 {
   }
 
   .topbar,
-  .input-row {
+  .input-row,
+  .auth-form,
+  .auth-actions,
+  .profile-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .auth-form {
+    display: flex;
   }
 
   .summary-grid {

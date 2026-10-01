@@ -25,6 +25,28 @@
           <button class="install-button" id="installButton" type="button" hidden>Install</button>
         </header>
 
+        <section class="auth-panel" aria-label="Account">
+          <form class="auth-form" id="authForm">
+            <div>
+              <label for="emailInput">Email</label>
+              <input id="emailInput" name="email" type="email" autocomplete="email" required>
+            </div>
+            <div>
+              <label for="passwordInput">Password</label>
+              <input id="passwordInput" name="password" type="password" autocomplete="current-password" minlength="6" required>
+            </div>
+            <div class="auth-actions">
+              <button id="signInButton" type="button">Sign in</button>
+              <button id="signUpButton" class="secondary-button" type="button">Sign up</button>
+            </div>
+          </form>
+          <div class="profile-panel" id="profilePanel" hidden>
+            <p id="userEmail"></p>
+            <button class="text-button" id="signOutButton" type="button">Sign out</button>
+          </div>
+          <p class="auth-message" id="authMessage"></p>
+        </section>
+
         <section class="summary-grid" aria-label="Project summary">
           <article class="metric">
             <span id="totalCount">0</span>
