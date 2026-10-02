@@ -26,6 +26,7 @@ const emailInput = document.querySelector("#emailInput");
 const passwordInput = document.querySelector("#passwordInput");
 const signInButton = document.querySelector("#signInButton");
 const signUpButton = document.querySelector("#signUpButton");
+const googleSignInButton = document.querySelector("#googleSignInButton");
 const signOutButton = document.querySelector("#signOutButton");
 const profilePanel = document.querySelector("#profilePanel");
 const userEmail = document.querySelector("#userEmail");
@@ -296,6 +297,19 @@ async function authenticate(mode) {
   await handleSession(result.data.session);
 }
 
+async function signInWithGoogle() {
+  setAuthMessage("Opening Google");
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}${window.location.pathname}`
+    }
+  });
+
+  if (error) setAuthMessage(error.message);
+}
+
 ideaForm.addEventListener("submit", (event) => {
   event.preventDefault();
   if (!user) {
@@ -360,6 +374,7 @@ clearDone.addEventListener("click", () => {
 
 signInButton.addEventListener("click", () => authenticate("sign-in"));
 signUpButton.addEventListener("click", () => authenticate("sign-up"));
+googleSignInButton.addEventListener("click", signInWithGoogle);
 authForm.addEventListener("submit", (event) => {
   event.preventDefault();
   authenticate("sign-in");
