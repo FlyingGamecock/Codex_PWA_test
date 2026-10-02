@@ -104,6 +104,18 @@ function setAuthMessage(message) {
   authMessage.textContent = message;
 }
 
+function formatDueDate(value) {
+  if (!value) return "";
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(date);
+}
+
 function renderAuth() {
   const signedIn = Boolean(user);
 
@@ -156,8 +168,9 @@ function render() {
     meta.append(category);
 
     if (idea.due_date) {
-      const dueDate = document.createElement("span");
-      dueDate.textContent = `Due ${idea.due_date}`;
+      const dueDate = document.createElement("time");
+      dueDate.dateTime = idea.due_date;
+      dueDate.textContent = `Due ${formatDueDate(idea.due_date)}`;
       meta.append(dueDate);
     }
 

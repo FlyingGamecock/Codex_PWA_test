@@ -6,7 +6,7 @@
   --panel: #ffffff;
   --line: #d9ddd5;
   --accent: #154734;
-  --accent-2: #d4573b;
+  --accent-2: #a83a24;
   --gold: #f2bb46;
   --blue: #2f6f93;
   --shadow: 0 22px 70px rgba(28, 38, 32, 0.16);
@@ -36,6 +36,38 @@ textarea {
 button {
   border: 0;
   cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  left: 18px;
+  top: 12px;
+  z-index: 10;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #fff;
+  background: var(--accent);
+  font-weight: 800;
+  transform: translateY(-150%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 .app-shell {
@@ -218,9 +250,13 @@ h2 {
   margin-bottom: 22px;
 }
 
-.idea-form label {
+.form-heading {
+  margin-bottom: 10px;
+}
+
+.field label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 800;
@@ -231,6 +267,16 @@ h2 {
   grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) minmax(140px, 170px) auto;
   gap: 10px;
   align-items: start;
+}
+
+.field {
+  min-width: 0;
+}
+
+.field-help {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .idea-form-grid input,
@@ -245,19 +291,26 @@ h2 {
 }
 
 .idea-form-grid textarea {
-  grid-column: 1 / 4;
   min-height: 72px;
   padding: 12px 14px;
   resize: vertical;
 }
 
+.title-field {
+  grid-column: 1 / 2;
+}
+
+.notes-field {
+  grid-column: 1 / 4;
+}
+
 .idea-form-grid button {
+  align-self: end;
   min-height: 48px;
 }
 
 .idea-form-grid input:focus,
 .idea-form-grid textarea:focus {
-  outline: 3px solid rgba(242, 187, 70, 0.45);
   border-color: var(--gold);
 }
 
@@ -331,7 +384,8 @@ h2 {
   margin-top: 7px;
 }
 
-.idea-meta span {
+.idea-meta span,
+.idea-meta time {
   padding: 4px 8px;
   border-radius: 999px;
   color: var(--accent);

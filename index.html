@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <a class="skip-link" href="#ideaForm">Skip to app ideas</a>
     <main class="app-shell">
       <section class="workspace" aria-labelledby="app-title">
         <header class="topbar">
@@ -45,7 +46,7 @@
             <p id="userEmail"></p>
             <button class="text-button" id="signOutButton" type="button">Sign out</button>
           </div>
-          <p class="auth-message" id="authMessage"></p>
+          <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
         </section>
 
         <section class="summary-grid" aria-label="Project summary">
@@ -58,18 +59,33 @@
             <p>Ready to build</p>
           </article>
           <article class="metric status-card">
-            <span id="offlineStatus">Online</span>
+            <span id="offlineStatus" role="status" aria-live="polite">Online</span>
             <p>Network status</p>
           </article>
         </section>
 
         <form class="idea-form" id="ideaForm">
-          <label for="ideaInput">App idea</label>
+          <div class="form-heading">
+            <h2>Add idea</h2>
+          </div>
           <div class="idea-form-grid">
-            <input id="ideaInput" name="idea" type="text" autocomplete="off" maxlength="80" placeholder="Habit tracker for night-shift nurses" required>
-            <input id="categoryInput" name="category" type="text" autocomplete="off" maxlength="40" placeholder="Category">
-            <input id="dueDateInput" name="dueDate" type="date" aria-label="Due date">
-            <textarea id="notesInput" name="notes" maxlength="500" placeholder="Notes"></textarea>
+            <div class="field title-field">
+              <label for="ideaInput">Idea title</label>
+              <input id="ideaInput" name="idea" type="text" autocomplete="off" maxlength="80" placeholder="Habit tracker for night-shift nurses" required aria-describedby="ideaHelp">
+              <p id="ideaHelp" class="field-help">Required. 80 characters maximum.</p>
+            </div>
+            <div class="field">
+              <label for="categoryInput">Category</label>
+              <input id="categoryInput" name="category" type="text" autocomplete="off" maxlength="40" placeholder="General">
+            </div>
+            <div class="field">
+              <label for="dueDateInput">Due date</label>
+              <input id="dueDateInput" name="dueDate" type="date">
+            </div>
+            <div class="field notes-field">
+              <label for="notesInput">Notes</label>
+              <textarea id="notesInput" name="notes" maxlength="500" placeholder="Add useful details"></textarea>
+            </div>
             <button type="submit">Add</button>
           </div>
         </form>
@@ -80,7 +96,7 @@
             <button class="text-button" id="clearDone" type="button">Clear ready</button>
           </div>
           <ul class="idea-list" id="ideaList"></ul>
-          <p class="empty-state" id="emptyState">Add the first idea and this PWA will keep it here, even after refresh or while offline.</p>
+          <p class="empty-state" id="emptyState" aria-live="polite">Add the first idea and this PWA will keep it here, even after refresh or while offline.</p>
         </section>
       </section>
     </main>
