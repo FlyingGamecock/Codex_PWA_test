@@ -28,7 +28,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -58,7 +59,6 @@ button {
 
 .topbar,
 .board-header,
-.input-row,
 .idea-item {
   display: flex;
   align-items: center;
@@ -113,7 +113,7 @@ h2 {
 }
 
 .install-button,
-.input-row button,
+.idea-form button,
 .auth-actions button,
 .text-button {
   min-height: 42px;
@@ -122,7 +122,7 @@ h2 {
 }
 
 .install-button,
-.input-row button,
+.idea-form button,
 .auth-actions button {
   padding: 0 18px;
   color: #fff;
@@ -226,11 +226,15 @@ h2 {
   font-weight: 800;
 }
 
-.input-row {
+.idea-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) minmax(140px, 170px) auto;
   gap: 10px;
+  align-items: start;
 }
 
-.input-row input {
+.idea-form-grid input,
+.idea-form-grid textarea {
   width: 100%;
   min-height: 48px;
   padding: 0 14px;
@@ -240,7 +244,19 @@ h2 {
   background: #fff;
 }
 
-.input-row input:focus {
+.idea-form-grid textarea {
+  grid-column: 1 / 4;
+  min-height: 72px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.idea-form-grid button {
+  min-height: 48px;
+}
+
+.idea-form-grid input:focus,
+.idea-form-grid textarea:focus {
   outline: 3px solid rgba(242, 187, 70, 0.45);
   border-color: var(--gold);
 }
@@ -270,21 +286,36 @@ h2 {
 }
 
 .idea-item {
+  align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
-  min-height: 64px;
-  padding: 12px;
+  min-height: 84px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-.idea-item label {
+.idea-main {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
+}
+
+.idea-main label {
+  flex: 0 0 auto;
+}
+
+.idea-content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.idea-title {
+  display: block;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .idea-item input {
@@ -293,11 +324,30 @@ h2 {
   accent-color: var(--accent);
 }
 
-.idea-item span {
+.idea-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.idea-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(21, 71, 52, 0.1);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.idea-notes {
+  margin-top: 9px;
+  color: var(--muted);
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
-.idea-item.done span {
+.idea-item.done .idea-title {
   color: var(--muted);
   text-decoration: line-through;
 }
@@ -331,7 +381,7 @@ h2 {
   }
 
   .topbar,
-  .input-row,
+  .idea-form-grid,
   .auth-form,
   .auth-actions,
   .profile-panel {
@@ -341,6 +391,14 @@ h2 {
 
   .auth-form {
     display: flex;
+  }
+
+  .idea-form-grid {
+    display: flex;
+  }
+
+  .idea-form-grid textarea {
+    min-height: 92px;
   }
 
   .summary-grid {

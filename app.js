@@ -14,6 +14,9 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 
 const ideaForm = document.querySelector("#ideaForm");
 const ideaInput = document.querySelector("#ideaInput");
+const categoryInput = document.querySelector("#categoryInput");
+const dueDateInput = document.querySelector("#dueDateInput");
+const notesInput = document.querySelector("#notesInput");
 const ideaList = document.querySelector("#ideaList");
 const emptyState = document.querySelector("#emptyState");
 const totalCount = document.querySelector("#totalCount");
@@ -52,6 +55,9 @@ function normalizeIdea(row) {
     id: row.id,
     user_id: row.user_id || user?.id,
     text: row.text,
+    notes: row.notes || "",
+    category: row.category || "General",
+    due_date: row.due_date || "",
     done: Boolean(row.done),
     updated_at: row.updated_at || new Date().toISOString(),
     pending: Boolean(row.pending)
@@ -105,6 +111,9 @@ function renderAuth() {
   profilePanel.hidden = !signedIn;
   userEmail.textContent = signedIn ? user.email : "";
   ideaInput.disabled = !signedIn;
+  categoryInput.disabled = !signedIn;
+  dueDateInput.disabled = !signedIn;
+  notesInput.disabled = !signedIn;
   ideaForm.querySelector("button").disabled = !signedIn;
   clearDone.disabled = !signedIn;
   emptyState.textContent = signedIn
@@ -123,14 +132,43 @@ function render() {
     item.className = `idea-item${idea.done ? " done" : ""}`;
     item.dataset.id = idea.id;
 
+    const main = document.createElement("div");
+    main.className = "idea-main";
+
     const label = document.createElement("label");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = idea.done;
     checkbox.setAttribute("aria-label", `Mark ${idea.text} as ready`);
 
-    const text = document.createElement("span");
-    text.textContent = idea.text;
+    const content = document.createElement("div");
+    content.className = "idea-content";
+
+    const title = document.createElement("span");
+    title.className = "idea-title";
+    title.textContent = idea.text;
+
+    const meta = document.createElement("div");
+    meta.className = "idea-meta";
+
+    const category = document.createElement("span");
+    category.textContent = idea.category || "General";
+    meta.append(category);
+
+    if (idea.due_date) {
+      const dueDate = document.createElement("span");
+      dueDate.textContent = `Due ${idea.due_date}`;
+      meta.append(dueDate);
+    }
+
+    content.append(title, meta);
+
+    if (idea.notes) {
+      const notes = document.createElement("p");
+      notes.className = "idea-notes";
+      notes.textContent = idea.notes;
+      content.append(notes);
+    }
 
     const deleteButton = document.createElement("button");
     deleteButton.className = "delete-button";
@@ -138,8 +176,9 @@ function render() {
     deleteButton.textContent = "X";
     deleteButton.setAttribute("aria-label", `Delete ${idea.text}`);
 
-    label.append(checkbox, text);
-    item.append(label, deleteButton);
+    label.append(checkbox);
+    main.append(label, content);
+    item.append(main, deleteButton);
     ideaList.append(item);
   }
 }
@@ -158,7 +197,7 @@ async function loadCloudIdeas() {
 
     const { data, error } = await supabase
       .from("ideas")
-      .select("id,user_id,text,done,updated_at")
+      .select("id,user_id,text,notes,category,due_date,done,updated_at")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
@@ -209,6 +248,9 @@ async function syncIdea(idea) {
           id: idea.id,
           user_id: user.id,
           text: idea.text,
+          notes: idea.notes,
+          category: idea.category,
+          due_date: idea.due_date || null,
           done: idea.done,
           updated_at: idea.updated_at
         },
@@ -318,12 +360,18 @@ ideaForm.addEventListener("submit", (event) => {
   }
 
   const text = ideaInput.value.trim();
+  const category = categoryInput.value.trim() || "General";
+  const dueDate = dueDateInput.value;
+  const notes = notesInput.value.trim();
   if (!text) return;
 
   const idea = {
     id: crypto.randomUUID(),
     user_id: user.id,
     text,
+    notes,
+    category,
+    due_date: dueDate,
     done: false,
     updated_at: new Date().toISOString(),
     pending: true
@@ -334,6 +382,9 @@ ideaForm.addEventListener("submit", (event) => {
   render();
   syncIdea(idea);
   ideaInput.value = "";
+  categoryInput.value = "";
+  dueDateInput.value = "";
+  notesInput.value = "";
   ideaInput.focus();
 });
 

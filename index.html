@@ -65,8 +65,11 @@
 
         <form class="idea-form" id="ideaForm">
           <label for="ideaInput">App idea</label>
-          <div class="input-row">
+          <div class="idea-form-grid">
             <input id="ideaInput" name="idea" type="text" autocomplete="off" maxlength="80" placeholder="Habit tracker for night-shift nurses" required>
+            <input id="categoryInput" name="category" type="text" autocomplete="off" maxlength="40" placeholder="Category">
+            <input id="dueDateInput" name="dueDate" type="date" aria-label="Due date">
+            <textarea id="notesInput" name="notes" maxlength="500" placeholder="Notes"></textarea>
             <button type="submit">Add</button>
           </div>
         </form>
