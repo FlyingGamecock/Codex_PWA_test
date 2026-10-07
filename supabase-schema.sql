@@ -1,3 +1,5 @@
+create extension if not exists pgcrypto;
+
 create table if not exists public.ideas (
   id uuid primary key,
   user_id uuid references auth.users(id) on delete cascade,

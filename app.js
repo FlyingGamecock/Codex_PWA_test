@@ -127,6 +127,26 @@ function setAuthMessage(message) {
   authMessage.textContent = message;
 }
 
+function isSetupMissing(error) {
+  const status = String(error?.status || error?.statusCode || "");
+  const message = String(error?.message || "").toLowerCase();
+  const code = String(error?.code || "");
+
+  return (
+    status === "404" ||
+    code === "42P01" ||
+    code === "PGRST200" ||
+    code === "PGRST205" ||
+    message.includes("not found") ||
+    message.includes("does not exist") ||
+    message.includes("could not find")
+  );
+}
+
+function showPhotoSetupMessage() {
+  setAuthMessage("Photo storage is not set up yet. Run the updated Supabase SQL, then refresh.");
+}
+
 function formatDueDate(value) {
   if (!value) return "";
 
@@ -205,7 +225,11 @@ async function hydratePhotoUrls(entries) {
     photos.map(async (photo) => {
       if (!photo.storage_path) return;
       const { data, error } = await supabase.storage.from(photoBucket).createSignedUrl(photo.storage_path, 3600);
-      if (!error) photo.signed_url = data.signedUrl;
+      if (error) {
+        if (isSetupMissing(error)) showPhotoSetupMessage();
+        return;
+      }
+      photo.signed_url = data.signedUrl;
     })
   );
 
@@ -252,7 +276,12 @@ async function uploadPhotosForIdea(idea, files) {
       render();
     } catch (error) {
       console.warn(error);
-      updateNetworkStatus("Upload failed");
+      if (isSetupMissing(error)) {
+        showPhotoSetupMessage();
+        updateNetworkStatus("Setup needed");
+      } else {
+        updateNetworkStatus("Upload failed");
+      }
     }
   }
 
@@ -445,11 +474,20 @@ async function loadCloudIdeas() {
   try {
     await flushPendingChanges();
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("ideas")
       .select("id,user_id,text,notes,category,due_date,done,updated_at,idea_photos(id,idea_id,user_id,storage_path,width,height,size_bytes,created_at)")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
+
+    if (error && isSetupMissing(error)) {
+      showPhotoSetupMessage();
+      ({ data, error } = await supabase
+        .from("ideas")
+        .select("id,user_id,text,notes,category,due_date,done,updated_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false }));
+    }
 
     if (error) throw error;
 
