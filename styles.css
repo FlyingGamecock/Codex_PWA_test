@@ -29,7 +29,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -40,7 +41,8 @@ button {
 
 button:disabled,
 input:disabled,
-textarea:disabled {
+textarea:disabled,
+select:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
@@ -48,7 +50,8 @@ textarea:disabled {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+select:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 3px;
 }
@@ -68,6 +71,18 @@ textarea:focus-visible {
 
 .skip-link:focus {
   transform: translateY(0);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .app-shell {
@@ -280,7 +295,8 @@ h2 {
 }
 
 .idea-form-grid input,
-.idea-form-grid textarea {
+.idea-form-grid textarea,
+.idea-form-grid select {
   width: 100%;
   min-height: 48px;
   padding: 0 14px;
@@ -302,6 +318,77 @@ h2 {
 
 .notes-field {
   grid-column: 1 / 4;
+}
+
+.photo-controls {
+  grid-column: 1 / 4;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(21, 71, 52, 0.04);
+}
+
+.photo-controls legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.photo-action-row,
+.idea-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.file-button {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--accent);
+  background: rgba(21, 71, 52, 0.1);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.file-button:hover,
+.file-button:focus-within {
+  background: rgba(21, 71, 52, 0.16);
+}
+
+.resize-control label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.resize-control select {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.photo-preview-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo-preview-list li {
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: #fff;
+  font-size: 0.84rem;
 }
 
 .idea-form-grid button {
@@ -399,6 +486,49 @@ h2 {
   color: var(--muted);
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.photo-card {
+  position: relative;
+  min-height: 92px;
+}
+
+.photo-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.photo-card button {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent-2);
+  font-weight: 900;
+}
+
+.idea-photo-actions {
+  margin-top: 12px;
+}
+
+.idea-photo-actions .file-button {
+  min-height: 38px;
+  padding: 8px 11px;
+  font-size: 0.84rem;
 }
 
 .idea-item.done .idea-title {

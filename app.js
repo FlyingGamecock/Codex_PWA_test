@@ -4,6 +4,7 @@ const baseStorageKey = "launchpad-ideas-v2";
 const basePendingDeletesKey = "launchpad-pending-deletes-v2";
 const supabaseUrl = "https://ovqksdgfmyxwpjwrhbcr.supabase.co";
 const supabaseKey = "sb_publishable_fpMh8zZ--K3G215ykdzTbA_qZoge-SS";
+const photoBucket = "idea-photos";
 const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
@@ -17,6 +18,12 @@ const ideaInput = document.querySelector("#ideaInput");
 const categoryInput = document.querySelector("#categoryInput");
 const dueDateInput = document.querySelector("#dueDateInput");
 const notesInput = document.querySelector("#notesInput");
+const photoLibraryInput = document.querySelector("#photoLibraryInput");
+const photoCameraInput = document.querySelector("#photoCameraInput");
+const photoLibraryButton = document.querySelector("#photoLibraryButton");
+const photoCameraButton = document.querySelector("#photoCameraButton");
+const photoSizeInput = document.querySelector("#photoSizeInput");
+const photoPreviewList = document.querySelector("#photoPreviewList");
 const ideaList = document.querySelector("#ideaList");
 const emptyState = document.querySelector("#emptyState");
 const totalCount = document.querySelector("#totalCount");
@@ -41,6 +48,7 @@ let user = null;
 let ideas = [];
 let pendingDeletes = [];
 let isSyncing = false;
+let selectedPhotoFiles = [];
 
 function userStorageKey() {
   return `${baseStorageKey}-${user.id}`;
@@ -48,6 +56,20 @@ function userStorageKey() {
 
 function userPendingDeletesKey() {
   return `${basePendingDeletesKey}-${user.id}`;
+}
+
+function normalizePhoto(row) {
+  return {
+    id: row.id,
+    idea_id: row.idea_id,
+    user_id: row.user_id || user?.id,
+    storage_path: row.storage_path,
+    width: row.width,
+    height: row.height,
+    size_bytes: row.size_bytes,
+    created_at: row.created_at,
+    signed_url: row.signed_url || ""
+  };
 }
 
 function normalizeIdea(row) {
@@ -59,6 +81,7 @@ function normalizeIdea(row) {
     category: row.category || "General",
     due_date: row.due_date || "",
     done: Boolean(row.done),
+    photos: Array.isArray(row.idea_photos) ? row.idea_photos.map(normalizePhoto) : Array.isArray(row.photos) ? row.photos.map(normalizePhoto) : [],
     updated_at: row.updated_at || new Date().toISOString(),
     pending: Boolean(row.pending)
   };
@@ -116,6 +139,148 @@ function formatDueDate(value) {
   }).format(date);
 }
 
+function addSelectedFiles(fileList) {
+  const imageFiles = Array.from(fileList || []).filter((file) => file.type.startsWith("image/"));
+  selectedPhotoFiles = [...selectedPhotoFiles, ...imageFiles];
+  renderSelectedPhotoPreviews();
+}
+
+function renderSelectedPhotoPreviews() {
+  photoPreviewList.innerHTML = "";
+
+  selectedPhotoFiles.forEach((file, index) => {
+    const item = document.createElement("li");
+    const size = Math.max(1, Math.round(file.size / 1024));
+    item.textContent = `${file.name || `Photo ${index + 1}`} (${size} KB)`;
+    photoPreviewList.append(item);
+  });
+}
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Unable to load image."));
+    };
+    image.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Unable to resize image."));
+    }, type, quality);
+  });
+}
+
+async function resizeImage(file) {
+  const maxWidth = Number(photoSizeInput.value) || 1200;
+  const image = await loadImage(file);
+  const scale = Math.min(1, maxWidth / image.naturalWidth);
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await canvasToBlob(canvas, "image/jpeg", 0.78);
+  return { blob, width, height, size_bytes: blob.size };
+}
+
+async function hydratePhotoUrls(entries) {
+  const photos = entries.flatMap((idea) => idea.photos || []);
+
+  await Promise.all(
+    photos.map(async (photo) => {
+      if (!photo.storage_path) return;
+      const { data, error } = await supabase.storage.from(photoBucket).createSignedUrl(photo.storage_path, 3600);
+      if (!error) photo.signed_url = data.signedUrl;
+    })
+  );
+
+  return entries;
+}
+
+async function uploadPhotosForIdea(idea, files) {
+  if (!user || !navigator.onLine || files.length === 0) return;
+
+  updateNetworkStatus("Uploading");
+
+  for (const file of files) {
+    try {
+      const resized = await resizeImage(file);
+      const photoId = crypto.randomUUID();
+      const storagePath = `${user.id}/${idea.id}/${photoId}.jpg`;
+
+      const { error: uploadError } = await supabase.storage.from(photoBucket).upload(storagePath, resized.blob, {
+        contentType: "image/jpeg",
+        upsert: false
+      });
+
+      if (uploadError) throw uploadError;
+
+      const { data, error } = await supabase
+        .from("idea_photos")
+        .insert({
+          id: photoId,
+          idea_id: idea.id,
+          user_id: user.id,
+          storage_path: storagePath,
+          width: resized.width,
+          height: resized.height,
+          size_bytes: resized.size_bytes
+        })
+        .select("id,idea_id,user_id,storage_path,width,height,size_bytes,created_at")
+        .single();
+
+      if (error) throw error;
+
+      const [photo] = await hydratePhotoUrls([{ photos: [normalizePhoto(data)] }]).then((items) => items[0].photos);
+      idea.photos = [...(idea.photos || []), photo];
+      saveIdeas();
+      render();
+    } catch (error) {
+      console.warn(error);
+      updateNetworkStatus("Upload failed");
+    }
+  }
+
+  updateNetworkStatus("Synced");
+}
+
+async function removePhoto(ideaId, photoId) {
+  const idea = ideas.find((entry) => entry.id === ideaId);
+  const photo = idea?.photos.find((entry) => entry.id === photoId);
+  if (!idea || !photo || !user) return;
+
+  try {
+    const { error: storageError } = await supabase.storage.from(photoBucket).remove([photo.storage_path]);
+    if (storageError) throw storageError;
+
+    const { error: rowError } = await supabase.from("idea_photos").delete().eq("id", photoId).eq("user_id", user.id);
+    if (rowError) throw rowError;
+
+    idea.photos = idea.photos.filter((entry) => entry.id !== photoId);
+    saveIdeas();
+    render();
+    updateNetworkStatus("Synced");
+  } catch (error) {
+    console.warn(error);
+    updateNetworkStatus("Local");
+  }
+}
+
 function renderAuth() {
   const signedIn = Boolean(user);
 
@@ -126,6 +291,11 @@ function renderAuth() {
   categoryInput.disabled = !signedIn;
   dueDateInput.disabled = !signedIn;
   notesInput.disabled = !signedIn;
+  photoLibraryInput.disabled = !signedIn;
+  photoCameraInput.disabled = !signedIn;
+  photoLibraryButton.disabled = !signedIn;
+  photoCameraButton.disabled = !signedIn;
+  photoSizeInput.disabled = !signedIn;
   ideaForm.querySelector("button").disabled = !signedIn;
   clearDone.disabled = !signedIn;
   emptyState.textContent = signedIn
@@ -183,6 +353,73 @@ function render() {
       content.append(notes);
     }
 
+    const visiblePhotos = idea.photos.filter((photo) => photo.signed_url);
+    if (visiblePhotos.length > 0) {
+      const photoGrid = document.createElement("div");
+      photoGrid.className = "photo-grid";
+
+      for (const photo of visiblePhotos) {
+        const card = document.createElement("div");
+        card.className = "photo-card";
+
+        const image = document.createElement("img");
+        image.src = photo.signed_url;
+        image.alt = `Photo attached to ${idea.text}`;
+        image.loading = "lazy";
+
+        const removePhotoButton = document.createElement("button");
+        removePhotoButton.type = "button";
+        removePhotoButton.className = "remove-photo-button";
+        removePhotoButton.dataset.photoId = photo.id;
+        removePhotoButton.dataset.ideaId = idea.id;
+        removePhotoButton.textContent = "X";
+        removePhotoButton.setAttribute("aria-label", `Remove photo from ${idea.text}`);
+
+        card.append(image, removePhotoButton);
+        photoGrid.append(card);
+      }
+
+      content.append(photoGrid);
+    }
+
+    const photoActions = document.createElement("div");
+    photoActions.className = "idea-photo-actions";
+    const libraryId = `library-${idea.id}`;
+    const cameraId = `camera-${idea.id}`;
+
+    const addPhotosButton = document.createElement("button");
+    addPhotosButton.className = "file-button idea-photo-trigger";
+    addPhotosButton.type = "button";
+    addPhotosButton.dataset.target = libraryId;
+    addPhotosButton.textContent = "Add photos";
+
+    const addPhotosInput = document.createElement("input");
+    addPhotosInput.id = libraryId;
+    addPhotosInput.className = "visually-hidden idea-photo-input";
+    addPhotosInput.type = "file";
+    addPhotosInput.accept = "image/*";
+    addPhotosInput.multiple = true;
+    addPhotosInput.dataset.ideaId = idea.id;
+    addPhotosInput.setAttribute("aria-label", `Add photos to ${idea.text}`);
+
+    const cameraButton = document.createElement("button");
+    cameraButton.className = "file-button idea-photo-trigger";
+    cameraButton.type = "button";
+    cameraButton.dataset.target = cameraId;
+    cameraButton.textContent = "Camera";
+
+    const cameraInput = document.createElement("input");
+    cameraInput.id = cameraId;
+    cameraInput.className = "visually-hidden idea-photo-input";
+    cameraInput.type = "file";
+    cameraInput.accept = "image/*";
+    cameraInput.capture = "environment";
+    cameraInput.dataset.ideaId = idea.id;
+    cameraInput.setAttribute("aria-label", `Take a photo for ${idea.text}`);
+
+    photoActions.append(addPhotosButton, addPhotosInput, cameraButton, cameraInput);
+    content.append(photoActions);
+
     const deleteButton = document.createElement("button");
     deleteButton.className = "delete-button";
     deleteButton.type = "button";
@@ -210,13 +447,13 @@ async function loadCloudIdeas() {
 
     const { data, error } = await supabase
       .from("ideas")
-      .select("id,user_id,text,notes,category,due_date,done,updated_at")
+      .select("id,user_id,text,notes,category,due_date,done,updated_at,idea_photos(id,idea_id,user_id,storage_path,width,height,size_bytes,created_at)")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
     if (error) throw error;
 
-    const cloudIdeas = (data || []).map(normalizeIdea);
+    const cloudIdeas = await hydratePhotoUrls((data || []).map(normalizeIdea));
     const pendingIdeas = ideas.filter((idea) => idea.pending);
     const merged = new Map(cloudIdeas.map((idea) => [idea.id, idea]));
     pendingIdeas.forEach((idea) => merged.set(idea.id, idea));
@@ -241,7 +478,8 @@ async function flushPendingChanges() {
   }
 
   for (const id of [...pendingDeletes]) {
-    await deleteCloudIdea(id);
+    const entry = typeof id === "string" ? { id, photos: [] } : id;
+    await deleteCloudIdea(entry.id, entry.photos || []);
   }
 }
 
@@ -285,9 +523,11 @@ async function syncIdea(idea) {
   }
 }
 
-async function deleteCloudIdea(id) {
+async function deleteCloudIdea(id, photos = []) {
   if (!user || !navigator.onLine) {
-    if (!pendingDeletes.includes(id)) pendingDeletes.push(id);
+    if (!pendingDeletes.some((entry) => (typeof entry === "string" ? entry : entry.id) === id)) {
+      pendingDeletes.push({ id, photos });
+    }
     savePendingDeletes();
     updateNetworkStatus("Local");
     return;
@@ -302,12 +542,20 @@ async function deleteCloudIdea(id) {
 
     if (error) throw error;
 
-    pendingDeletes = pendingDeletes.filter((entry) => entry !== id);
+    const paths = photos.map((photo) => photo.storage_path).filter(Boolean);
+    if (paths.length > 0) {
+      const { error: storageError } = await supabase.storage.from(photoBucket).remove(paths);
+      if (storageError) throw storageError;
+    }
+
+    pendingDeletes = pendingDeletes.filter((entry) => (typeof entry === "string" ? entry : entry.id) !== id);
     savePendingDeletes();
     updateNetworkStatus("Synced");
   } catch (error) {
     console.warn(error);
-    if (!pendingDeletes.includes(id)) pendingDeletes.push(id);
+    if (!pendingDeletes.some((entry) => (typeof entry === "string" ? entry : entry.id) === id)) {
+      pendingDeletes.push({ id, photos });
+    }
     savePendingDeletes();
     updateNetworkStatus("Local");
   }
@@ -365,7 +613,7 @@ async function signInWithGoogle() {
   if (error) setAuthMessage(error.message);
 }
 
-ideaForm.addEventListener("submit", (event) => {
+ideaForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!user) {
     setAuthMessage("Sign in before adding ideas.");
@@ -376,6 +624,7 @@ ideaForm.addEventListener("submit", (event) => {
   const category = categoryInput.value.trim() || "General";
   const dueDate = dueDateInput.value;
   const notes = notesInput.value.trim();
+  const photoFiles = [...selectedPhotoFiles];
   if (!text) return;
 
   const idea = {
@@ -385,6 +634,7 @@ ideaForm.addEventListener("submit", (event) => {
     notes,
     category,
     due_date: dueDate,
+    photos: [],
     done: false,
     updated_at: new Date().toISOString(),
     pending: true
@@ -393,17 +643,20 @@ ideaForm.addEventListener("submit", (event) => {
   ideas.unshift(idea);
   saveIdeas();
   render();
-  syncIdea(idea);
+  await syncIdea(idea);
+  await uploadPhotosForIdea(idea, photoFiles);
   ideaInput.value = "";
   categoryInput.value = "";
   dueDateInput.value = "";
   notesInput.value = "";
+  selectedPhotoFiles = [];
+  renderSelectedPhotoPreviews();
   ideaInput.focus();
 });
 
 ideaList.addEventListener("change", (event) => {
   const checkbox = event.target;
-  if (!(checkbox instanceof HTMLInputElement)) return;
+  if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== "checkbox") return;
 
   const item = checkbox.closest(".idea-item");
   const idea = ideas.find((entry) => entry.id === item?.dataset.id);
@@ -418,27 +671,61 @@ ideaList.addEventListener("change", (event) => {
 
 ideaList.addEventListener("click", (event) => {
   const button = event.target;
-  if (!(button instanceof HTMLButtonElement) || !button.classList.contains("delete-button")) return;
+  if (!(button instanceof HTMLButtonElement)) return;
+
+  if (button.classList.contains("remove-photo-button")) {
+    removePhoto(button.dataset.ideaId, button.dataset.photoId);
+    return;
+  }
+
+  if (button.classList.contains("idea-photo-trigger")) {
+    document.getElementById(button.dataset.target)?.click();
+    return;
+  }
+
+  if (!button.classList.contains("delete-button")) return;
 
   const item = button.closest(".idea-item");
   const id = item?.dataset.id;
+  const deletedIdea = ideas.find((idea) => idea.id === id);
   ideas = ideas.filter((idea) => idea.id !== item?.dataset.id);
   saveIdeas();
   render();
-  if (id) deleteCloudIdea(id);
+  if (id) deleteCloudIdea(id, deletedIdea?.photos || []);
+});
+
+ideaList.addEventListener("change", async (event) => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.classList.contains("idea-photo-input")) return;
+
+  const idea = ideas.find((entry) => entry.id === input.dataset.ideaId);
+  if (!idea) return;
+
+  await uploadPhotosForIdea(idea, Array.from(input.files || []));
+  input.value = "";
 });
 
 clearDone.addEventListener("click", () => {
-  const deletedIds = ideas.filter((idea) => idea.done).map((idea) => idea.id);
+  const deletedIdeas = ideas.filter((idea) => idea.done);
   ideas = ideas.filter((idea) => !idea.done);
   saveIdeas();
   render();
-  deletedIds.forEach((id) => deleteCloudIdea(id));
+  deletedIdeas.forEach((idea) => deleteCloudIdea(idea.id, idea.photos || []));
 });
 
 signInButton.addEventListener("click", () => authenticate("sign-in"));
 signUpButton.addEventListener("click", () => authenticate("sign-up"));
 googleSignInButton.addEventListener("click", signInWithGoogle);
+photoLibraryButton.addEventListener("click", () => photoLibraryInput.click());
+photoCameraButton.addEventListener("click", () => photoCameraInput.click());
+photoLibraryInput.addEventListener("change", () => {
+  addSelectedFiles(photoLibraryInput.files);
+  photoLibraryInput.value = "";
+});
+photoCameraInput.addEventListener("change", () => {
+  addSelectedFiles(photoCameraInput.files);
+  photoCameraInput.value = "";
+});
 authForm.addEventListener("submit", (event) => {
   event.preventDefault();
   authenticate("sign-in");
