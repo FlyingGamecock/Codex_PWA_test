@@ -1,6 +1,6 @@
 {
-  "name": "Launchpad PWA",
-  "short_name": "Launchpad",
+  "name": "Memory Maker",
+  "short_name": "Memory Maker",
   "description": "An offline-ready idea queue for planning small apps.",
   "start_url": ".",
   "scope": ".",
