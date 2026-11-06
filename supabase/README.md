@@ -19,7 +19,7 @@ instead of running it against the existing database:
 3. Mark the existing schema as the migration baseline:
 
    ```powershell
-   supabase migration repair --status applied 20261105213000
+   supabase migration repair --linked --status applied 20261105213000
    ```
 
 This records migration history; it does not execute the migration SQL. Do not
