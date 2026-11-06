@@ -443,8 +443,37 @@ h2 {
   gap: 10px;
 }
 
-.idea-main label {
+.idea-main > label {
   flex: 0 0 auto;
+}
+
+.share-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.share-control input {
+  margin: 0;
+}
+
+.community-board {
+  margin-top: 28px;
+}
+
+.community-description {
+  margin: -2px 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.idea-item.read-only {
+  background: #fbfcfa;
 }
 
 .idea-content {

@@ -9,7 +9,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icon-192.png">
-    <link rel="stylesheet" href="styles.css?v=photo-fix-2">
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <a class="skip-link" href="#ideaForm">Skip to app ideas</a>
@@ -116,8 +116,17 @@
           <ul class="idea-list" id="ideaList"></ul>
           <p class="empty-state" id="emptyState" aria-live="polite">Add the first idea and this PWA will keep it here, even after refresh or while offline.</p>
         </section>
+
+        <section class="board community-board" aria-labelledby="communityTitle">
+          <div class="board-header">
+            <h2 id="communityTitle">Community ideas</h2>
+          </div>
+          <p class="community-description">Ideas shared here are visible to anyone who can access Launchpad.</p>
+          <ul class="idea-list" id="communityList"></ul>
+          <p class="empty-state" id="communityEmptyState" aria-live="polite">No ideas have been shared yet.</p>
+        </section>
       </section>
     </main>
-    <script src="app.js?v=photo-fix-2" type="module"></script>
+    <script src="app.js" type="module"></script>
   </body>
 </html>

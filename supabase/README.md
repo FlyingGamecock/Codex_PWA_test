@@ -46,3 +46,18 @@ GitHub Actions tab.
 
 The root `supabase-schema.sql` is retained as the original setup script;
 future database changes should be made in timestamped migration files.
+
+## Public idea sharing
+
+The migration `20261106150000_public_idea_sharing.sql` adds the `is_public`
+field and read-only policies for the community directory. Apply it to the
+linked existing project with:
+
+```powershell
+supabase db push --linked
+```
+
+Only ideas explicitly marked public are visible to anonymous or authenticated
+visitors. Database policies permit visitors to read shared ideas and their
+photos, but only the owner can change or delete an idea. Treat shared idea
+titles, notes, due dates, status, and photos as public information.

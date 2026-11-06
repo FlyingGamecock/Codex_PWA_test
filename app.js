@@ -26,6 +26,8 @@ const photoSizeInput = document.querySelector("#photoSizeInput");
 const photoPreviewList = document.querySelector("#photoPreviewList");
 const ideaList = document.querySelector("#ideaList");
 const emptyState = document.querySelector("#emptyState");
+const communityList = document.querySelector("#communityList");
+const communityEmptyState = document.querySelector("#communityEmptyState");
 const totalCount = document.querySelector("#totalCount");
 const readyCount = document.querySelector("#readyCount");
 const offlineStatus = document.querySelector("#offlineStatus");
@@ -46,6 +48,7 @@ let deferredInstallPrompt = null;
 let session = null;
 let user = null;
 let ideas = [];
+let communityIdeas = [];
 let pendingDeletes = [];
 let isSyncing = false;
 let selectedPhotoFiles = [];
@@ -81,6 +84,7 @@ function normalizeIdea(row) {
     category: row.category || "General",
     due_date: row.due_date || "",
     done: Boolean(row.done),
+    is_public: Boolean(row.is_public),
     photos: Array.isArray(row.idea_photos) ? row.idea_photos.map(normalizePhoto) : Array.isArray(row.photos) ? row.photos.map(normalizePhoto) : [],
     updated_at: row.updated_at || new Date().toISOString(),
     pending: Boolean(row.pending)
@@ -333,27 +337,37 @@ function renderAuth() {
 }
 
 function render() {
-  ideaList.innerHTML = "";
   totalCount.textContent = ideas.length;
   readyCount.textContent = ideas.filter((idea) => idea.done).length;
   emptyState.hidden = ideas.length > 0;
+  renderIdeaList(ideaList, ideas, false);
+  renderIdeaList(communityList, communityIdeas, true);
+  communityEmptyState.hidden = communityIdeas.length > 0;
+}
 
-  for (const idea of ideas) {
+function renderIdeaList(list, entries, readOnly) {
+  list.innerHTML = "";
+
+  for (const idea of entries) {
     const item = document.createElement("li");
-    item.className = `idea-item${idea.done ? " done" : ""}`;
+    item.className = `idea-item${idea.done ? " done" : ""}${readOnly ? " read-only" : ""}`;
     item.dataset.id = idea.id;
 
     const main = document.createElement("div");
     main.className = "idea-main";
 
-    const label = document.createElement("label");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = idea.done;
-    checkbox.setAttribute("aria-label", `Mark ${idea.text} as ready`);
-
     const content = document.createElement("div");
     content.className = "idea-content";
+
+    if (!readOnly) {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = idea.done;
+      checkbox.setAttribute("aria-label", `Mark ${idea.text} as ready`);
+      label.append(checkbox);
+      main.append(label);
+    }
 
     const title = document.createElement("span");
     title.className = "idea-title";
@@ -366,6 +380,12 @@ function render() {
     category.textContent = idea.category || "General";
     meta.append(category);
 
+    if (readOnly && idea.done) {
+      const ready = document.createElement("span");
+      ready.textContent = "Ready to build";
+      meta.append(ready);
+    }
+
     if (idea.due_date) {
       const dueDate = document.createElement("time");
       dueDate.dateTime = idea.due_date;
@@ -374,6 +394,22 @@ function render() {
     }
 
     content.append(title, meta);
+
+    if (!readOnly) {
+      const shareLabel = document.createElement("label");
+      shareLabel.className = "share-control";
+
+      const shareToggle = document.createElement("input");
+      shareToggle.type = "checkbox";
+      shareToggle.className = "share-toggle";
+      shareToggle.checked = idea.is_public;
+      shareToggle.setAttribute("aria-label", `${idea.is_public ? "Stop sharing" : "Share"} ${idea.text} with the community`);
+
+      const shareText = document.createElement("span");
+      shareText.textContent = idea.is_public ? "Shared with community" : "Share with community";
+      shareLabel.append(shareToggle, shareText);
+      content.append(shareLabel);
+    }
 
     if (idea.notes) {
       const notes = document.createElement("p");
@@ -396,69 +432,75 @@ function render() {
         image.alt = `Photo attached to ${idea.text}`;
         image.loading = "lazy";
 
-        const removePhotoButton = document.createElement("button");
-        removePhotoButton.type = "button";
-        removePhotoButton.className = "remove-photo-button";
-        removePhotoButton.dataset.photoId = photo.id;
-        removePhotoButton.dataset.ideaId = idea.id;
-        removePhotoButton.textContent = "X";
-        removePhotoButton.setAttribute("aria-label", `Remove photo from ${idea.text}`);
-
-        card.append(image, removePhotoButton);
+        card.append(image);
+        if (!readOnly) {
+          const removePhotoButton = document.createElement("button");
+          removePhotoButton.type = "button";
+          removePhotoButton.className = "remove-photo-button";
+          removePhotoButton.dataset.photoId = photo.id;
+          removePhotoButton.dataset.ideaId = idea.id;
+          removePhotoButton.textContent = "X";
+          removePhotoButton.setAttribute("aria-label", `Remove photo from ${idea.text}`);
+          card.append(removePhotoButton);
+        }
         photoGrid.append(card);
       }
 
       content.append(photoGrid);
     }
 
-    const photoActions = document.createElement("div");
-    photoActions.className = "idea-photo-actions";
-    const libraryId = `library-${idea.id}`;
-    const cameraId = `camera-${idea.id}`;
+    if (!readOnly) {
+      const photoActions = document.createElement("div");
+      photoActions.className = "idea-photo-actions";
+      const libraryId = `library-${idea.id}`;
+      const cameraId = `camera-${idea.id}`;
 
-    const addPhotosButton = document.createElement("button");
-    addPhotosButton.className = "file-button idea-photo-trigger";
-    addPhotosButton.type = "button";
-    addPhotosButton.dataset.target = libraryId;
-    addPhotosButton.textContent = "Add photos";
+      const addPhotosButton = document.createElement("button");
+      addPhotosButton.className = "file-button idea-photo-trigger";
+      addPhotosButton.type = "button";
+      addPhotosButton.dataset.target = libraryId;
+      addPhotosButton.textContent = "Add photos";
 
-    const addPhotosInput = document.createElement("input");
-    addPhotosInput.id = libraryId;
-    addPhotosInput.className = "visually-hidden idea-photo-input";
-    addPhotosInput.type = "file";
-    addPhotosInput.accept = "image/*";
-    addPhotosInput.multiple = true;
-    addPhotosInput.dataset.ideaId = idea.id;
-    addPhotosInput.setAttribute("aria-label", `Add photos to ${idea.text}`);
+      const addPhotosInput = document.createElement("input");
+      addPhotosInput.id = libraryId;
+      addPhotosInput.className = "visually-hidden idea-photo-input";
+      addPhotosInput.type = "file";
+      addPhotosInput.accept = "image/*";
+      addPhotosInput.multiple = true;
+      addPhotosInput.dataset.ideaId = idea.id;
+      addPhotosInput.setAttribute("aria-label", `Add photos to ${idea.text}`);
 
-    const cameraButton = document.createElement("button");
-    cameraButton.className = "file-button idea-photo-trigger";
-    cameraButton.type = "button";
-    cameraButton.dataset.target = cameraId;
-    cameraButton.textContent = "Camera";
+      const cameraButton = document.createElement("button");
+      cameraButton.className = "file-button idea-photo-trigger";
+      cameraButton.type = "button";
+      cameraButton.dataset.target = cameraId;
+      cameraButton.textContent = "Camera";
 
-    const cameraInput = document.createElement("input");
-    cameraInput.id = cameraId;
-    cameraInput.className = "visually-hidden idea-photo-input";
-    cameraInput.type = "file";
-    cameraInput.accept = "image/*";
-    cameraInput.capture = "environment";
-    cameraInput.dataset.ideaId = idea.id;
-    cameraInput.setAttribute("aria-label", `Take a photo for ${idea.text}`);
+      const cameraInput = document.createElement("input");
+      cameraInput.id = cameraId;
+      cameraInput.className = "visually-hidden idea-photo-input";
+      cameraInput.type = "file";
+      cameraInput.accept = "image/*";
+      cameraInput.capture = "environment";
+      cameraInput.dataset.ideaId = idea.id;
+      cameraInput.setAttribute("aria-label", `Take a photo for ${idea.text}`);
 
-    photoActions.append(addPhotosButton, addPhotosInput, cameraButton, cameraInput);
-    content.append(photoActions);
+      photoActions.append(addPhotosButton, addPhotosInput, cameraButton, cameraInput);
+      content.append(photoActions);
 
-    const deleteButton = document.createElement("button");
-    deleteButton.className = "delete-button";
-    deleteButton.type = "button";
-    deleteButton.textContent = "X";
-    deleteButton.setAttribute("aria-label", `Delete ${idea.text}`);
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "delete-button";
+      deleteButton.type = "button";
+      deleteButton.textContent = "X";
+      deleteButton.setAttribute("aria-label", `Delete ${idea.text}`);
 
-    label.append(checkbox);
-    main.append(label, content);
-    item.append(main, deleteButton);
-    ideaList.append(item);
+      main.append(content);
+      item.append(main, deleteButton);
+    } else {
+      main.append(content);
+      item.append(main);
+    }
+    list.append(item);
   }
 }
 
@@ -476,7 +518,7 @@ async function loadCloudIdeas() {
 
     let { data, error } = await supabase
       .from("ideas")
-      .select("id,user_id,text,notes,category,due_date,done,updated_at,idea_photos(id,idea_id,user_id,storage_path,width,height,size_bytes,created_at)")
+      .select("id,user_id,text,notes,category,due_date,done,is_public,updated_at,idea_photos(id,idea_id,user_id,storage_path,width,height,size_bytes,created_at)")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
 
@@ -484,7 +526,7 @@ async function loadCloudIdeas() {
       showPhotoSetupMessage();
       ({ data, error } = await supabase
         .from("ideas")
-        .select("id,user_id,text,notes,category,due_date,done,updated_at")
+        .select("id,user_id,text,notes,category,due_date,done,is_public,updated_at")
         .eq("user_id", user.id)
         .order("updated_at", { ascending: false }));
     }
@@ -505,6 +547,32 @@ async function loadCloudIdeas() {
     updateNetworkStatus("Local");
   } finally {
     isSyncing = false;
+  }
+  await loadCommunityIdeas();
+}
+
+async function loadCommunityIdeas() {
+  if (!navigator.onLine) return;
+
+  try {
+    const { data, error } = await supabase
+      .from("ideas")
+      .select("id,text,notes,category,due_date,done,is_public,updated_at,idea_photos(id,idea_id,storage_path,width,height,size_bytes,created_at)")
+      .eq("is_public", true)
+      .order("updated_at", { ascending: false });
+
+    if (error) throw error;
+
+    const visibleIdeas = await hydratePhotoUrls((data || []).map((row) => {
+      const idea = normalizeIdea(row);
+      idea.user_id = null;
+      return idea;
+    }));
+    communityIdeas = visibleIdeas.filter((idea) => !user || !ideas.some((ownIdea) => ownIdea.id === idea.id));
+    render();
+  } catch (error) {
+    console.warn(error);
+    setAuthMessage(`Could not load community ideas: ${error.message}`);
   }
 }
 
@@ -541,6 +609,7 @@ async function syncIdea(idea) {
           category: idea.category,
           due_date: idea.due_date || null,
           done: idea.done,
+          is_public: Boolean(idea.is_public),
           updated_at: idea.updated_at
         },
         { onConflict: "id" }
@@ -613,6 +682,7 @@ async function handleSession(nextSession) {
     await loadCloudIdeas();
   } else {
     updateNetworkStatus(navigator.onLine ? "Online" : "Offline");
+    await loadCommunityIdeas();
   }
 }
 
@@ -694,12 +764,22 @@ ideaForm.addEventListener("submit", async (event) => {
 
 ideaList.addEventListener("change", (event) => {
   const checkbox = event.target;
-  if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== "checkbox") return;
+  if (!(checkbox instanceof HTMLInputElement)) return;
 
   const item = checkbox.closest(".idea-item");
   const idea = ideas.find((entry) => entry.id === item?.dataset.id);
   if (!idea) return;
 
+  if (checkbox.classList.contains("share-toggle")) {
+    idea.is_public = checkbox.checked;
+    idea.updated_at = new Date().toISOString();
+    saveIdeas();
+    render();
+    syncIdea(idea).then(loadCommunityIdeas);
+    return;
+  }
+
+  if (checkbox.type !== "checkbox") return;
   idea.done = checkbox.checked;
   idea.updated_at = new Date().toISOString();
   saveIdeas();
@@ -777,7 +857,8 @@ signOutButton.addEventListener("click", async () => {
 
 window.addEventListener("online", () => {
   updateNetworkStatus();
-  loadCloudIdeas();
+  if (user) loadCloudIdeas();
+  else loadCommunityIdeas();
 });
 window.addEventListener("offline", updateNetworkStatus);
 
